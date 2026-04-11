@@ -34,3 +34,9 @@ desktop.ini
 
 # Project specific
 .figma/
+
+out/
+release/
+*.db
+*.sqlite
+

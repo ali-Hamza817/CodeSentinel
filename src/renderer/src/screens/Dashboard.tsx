@@ -25,44 +25,49 @@ export function Dashboard() {
     );
   }
 
-  const { metrics } = activeProject;
+  const metrics = activeProject?.metrics || {
+    totalFiles: 0,
+    vulnerabilities: 0,
+    avgComplexity: 0,
+    buildStatus: 'Pending'
+  };
 
   const vulnerabilityData = [
-    { name: "Critical", value: Math.floor(metrics.vulnerabilities * 0.1), color: "#DC2626" },
-    { name: "High", value: Math.floor(metrics.vulnerabilities * 0.2), color: "#F59E0B" },
-    { name: "Medium", value: Math.floor(metrics.vulnerabilities * 0.3), color: "#FCD34D" },
-    { name: "Low", value: Math.floor(metrics.vulnerabilities * 0.4), color: "#10B981" },
+    { name: "Critical", value: Math.floor((metrics?.vulnerabilities || 0) * 0.1), color: "#DC2626" },
+    { name: "High", value: Math.floor((metrics?.vulnerabilities || 0) * 0.2), color: "#F59E0B" },
+    { name: "Medium", value: Math.floor((metrics?.vulnerabilities || 0) * 0.3), color: "#FCD34D" },
+    { name: "Low", value: Math.floor((metrics?.vulnerabilities || 0) * 0.4), color: "#10B981" },
   ];
 
   const statsCards = [
     {
       title: "Total Files",
-      value: metrics.totalFiles.toLocaleString(),
-      change: "+12%",
-      trend: "up",
+      value: (metrics?.totalFiles || 0).toLocaleString(),
+      change: "+0%",
+      trend: "stable",
       icon: FileCode,
       color: "blue",
     },
     {
       title: "Vulnerabilities",
-      value: metrics.vulnerabilities.toString(),
-      change: "-8%",
-      trend: "down",
+      value: (metrics?.vulnerabilities || 0).toString(),
+      change: "-0%",
+      trend: "stable",
       icon: Shield,
       color: "red",
     },
     {
       title: "Avg Complexity",
-      value: metrics.avgComplexity.toFixed(1),
-      change: "+3%",
-      trend: "up",
+      value: (metrics?.avgComplexity || 0).toFixed(1),
+      change: "+0%",
+      trend: "stable",
       icon: BarChart3,
       color: "yellow",
     },
     {
       title: "Build Status",
-      value: metrics.buildStatus,
-      change: metrics.buildStatus === 'Passed' ? "100%" : "0%",
+      value: metrics?.buildStatus || "Pending",
+      change: (metrics?.buildStatus === 'Passed') ? "100%" : "0%",
       trend: "stable",
       icon: CheckCircle,
       color: "green",

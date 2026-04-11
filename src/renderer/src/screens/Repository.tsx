@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderGit2, Upload, Clock, ExternalLink, Plus } from "lucide-react";
+import { FolderGit2, Upload, Clock, ExternalLink } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent } from "../components/ui/card";
@@ -8,26 +8,27 @@ import { toast } from "sonner";
 
 export function Repository() {
   const [repoUrl, setRepoUrl] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { projects, addProject, setActiveProject } = useProjectStore();
+  const { projects, addProject, setActiveProject, startAnalysis } = useProjectStore();
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     if (!repoUrl) return;
     
-    setIsLoading(true);
-    // Simulate cloning process
-    setTimeout(() => {
+    setIsConnecting(true);
+    try {
       const repoName = repoUrl.split('/').pop() || 'new-project';
-      addProject({
+      await addProject({
         name: repoName,
         url: repoUrl,
-        path: `/projects/${repoName}`,
-        lastScanned: 'Just now',
+        path: "", // This will be set by the cloneRepo logic in the store
       });
-      setIsLoading(false);
       setRepoUrl("");
-      toast.success(`Project ${repoName} connected successfully!`);
-    }, 2000);
+      toast.success(`Project ${repoName} initialized for analysis!`);
+    } catch (err) {
+      toast.error("Failed to connect repository. check if URL is valid.");
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
   return (
@@ -70,10 +71,10 @@ export function Repository() {
               />
               <Button
                 onClick={handleConnect}
-                disabled={!repoUrl || isLoading}
+                disabled={!repoUrl || isConnecting}
                 className="bg-blue-600 hover:bg-blue-700 h-11 px-6 font-medium shadow-md shadow-blue-100 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
-                {isLoading ? (
+                {isConnecting ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     Connecting...
@@ -118,25 +119,27 @@ export function Repository() {
                           <h4 className="font-bold text-slate-900">
                             {project.name}
                           </h4>
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                          {project.status === 'completed' && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />}
+                          {project.status === 'cloning' && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />}
+                          {project.status === 'scanning' && <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />}
                         </div>
                         <p className="text-xs text-slate-500 font-mono mt-0.5">{project.url}</p>
                       </div>
                     </div>
                     
                     <div className="flex items-center gap-8">
-                      <div className="flex items-center gap-6 text-sm">
+                       <div className="flex items-center gap-6 text-sm">
                         <div className="text-right">
                           <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Vulnerabilities</p>
                           <p className="font-bold text-red-600">
-                            {project.metrics.vulnerabilities}
+                            {project.metrics?.vulnerabilities ?? 0}
                           </p>
                         </div>
                         <div className="h-8 w-[1px] bg-slate-100" />
                         <div className="text-right">
                           <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Complexity</p>
                           <p className="font-bold text-slate-900">
-                            {project.metrics.avgComplexity.toFixed(1)}
+                            {project.metrics?.avgComplexity?.toFixed(1) ?? "0.0"}
                           </p>
                         </div>
                       </div>

@@ -121,7 +121,7 @@ export function Complexity() {
                 <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 border-none font-bold">Stable</Badge>
               </div>
               <div>
-                <p className="text-3xl font-bold text-slate-900">{activeProject.metrics.avgComplexity.toFixed(1)}</p>
+                <p className="text-3xl font-bold text-slate-900">{activeProject.metrics?.avgComplexity?.toFixed(1) ?? "0.0"}</p>
                 <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Cyclomatic Average</p>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed font-medium">

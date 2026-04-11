@@ -41,7 +41,7 @@ export function ContainerInsights() {
     );
   }
 
-  const dockerStats = activeProject.metrics.dockerStats || { cpu: 0, memory: 0, buildTime: 0, runTime: 0 };
+  const dockerStats = activeProject?.metrics?.dockerStats || { cpu: 0, memory: 0, buildTime: 0, runTime: 0 };
 
   return (
     <div className="p-8 space-y-8 animate-in fade-in slide-in-from-right-4 duration-700">
