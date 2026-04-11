@@ -1,6 +1,8 @@
 import { FileCode, Shield, BarChart3, CheckCircle, TrendingUp, TrendingDown, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { useProjectStore } from "../store/projectStore";
+import { Badge } from "../components/ui/badge";
 
 const complexityData = [
   { date: "Jan", complexity: 12 },
@@ -11,56 +13,74 @@ const complexityData = [
   { date: "Jun", complexity: 16 },
 ];
 
-const vulnerabilityData = [
-  { name: "Critical", value: 3, color: "#DC2626" },
-  { name: "High", value: 8, color: "#F59E0B" },
-  { name: "Medium", value: 15, color: "#FCD34D" },
-  { name: "Low", value: 24, color: "#10B981" },
-];
-
-const statsCards = [
-  {
-    title: "Total Files",
-    value: "1,247",
-    change: "+12%",
-    trend: "up",
-    icon: FileCode,
-    color: "blue",
-  },
-  {
-    title: "Vulnerabilities",
-    value: "50",
-    change: "-8%",
-    trend: "down",
-    icon: Shield,
-    color: "red",
-  },
-  {
-    title: "Avg Complexity",
-    value: "14.2",
-    change: "+3%",
-    trend: "up",
-    icon: BarChart3,
-    color: "yellow",
-  },
-  {
-    title: "Build Status",
-    value: "Passed",
-    change: "100%",
-    trend: "stable",
-    icon: CheckCircle,
-    color: "green",
-  },
-];
-
 export function Dashboard() {
+  const { getActiveProject } = useProjectStore();
+  const activeProject = getActiveProject();
+
+  if (!activeProject) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-slate-500">No active project selected. Please select or add a project.</p>
+      </div>
+    );
+  }
+
+  const { metrics } = activeProject;
+
+  const vulnerabilityData = [
+    { name: "Critical", value: Math.floor(metrics.vulnerabilities * 0.1), color: "#DC2626" },
+    { name: "High", value: Math.floor(metrics.vulnerabilities * 0.2), color: "#F59E0B" },
+    { name: "Medium", value: Math.floor(metrics.vulnerabilities * 0.3), color: "#FCD34D" },
+    { name: "Low", value: Math.floor(metrics.vulnerabilities * 0.4), color: "#10B981" },
+  ];
+
+  const statsCards = [
+    {
+      title: "Total Files",
+      value: metrics.totalFiles.toLocaleString(),
+      change: "+12%",
+      trend: "up",
+      icon: FileCode,
+      color: "blue",
+    },
+    {
+      title: "Vulnerabilities",
+      value: metrics.vulnerabilities.toString(),
+      change: "-8%",
+      trend: "down",
+      icon: Shield,
+      color: "red",
+    },
+    {
+      title: "Avg Complexity",
+      value: metrics.avgComplexity.toFixed(1),
+      change: "+3%",
+      trend: "up",
+      icon: BarChart3,
+      color: "yellow",
+    },
+    {
+      title: "Build Status",
+      value: metrics.buildStatus,
+      change: metrics.buildStatus === 'Passed' ? "100%" : "0%",
+      trend: "stable",
+      icon: CheckCircle,
+      color: "green",
+    },
+  ];
+
   return (
-    <div className="p-8 space-y-8">
-      <div>
-        <h2 className="text-2xl font-semibold text-slate-900">Dashboard</h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Project overview and health metrics
-        </p>
+    <div className="p-8 space-y-8 animate-in fade-in duration-500">
+      <div className="flex items-end justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900">{activeProject.name} Dashboard</h2>
+          <p className="text-sm text-slate-500 mt-1">
+            Real-time security analytics and performance monitoring
+          </p>
+        </div>
+        <Badge variant="outline" className="px-4 py-1 text-slate-500 border-slate-200">
+          Last Scanned: {activeProject.lastScanned}
+        </Badge>
       </div>
 
       {/* Stats Cards */}

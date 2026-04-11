@@ -8,6 +8,7 @@ import { Vulnerabilities } from "./screens/Vulnerabilities";
 import { Complexity } from "./screens/Complexity";
 import { AIReview } from "./screens/AIReview";
 import { BuildCI } from "./screens/BuildCI";
+import { ContainerInsights } from "./screens/ContainerInsights";
 import { RiskScoring } from "./screens/RiskScoring";
 import { Reports } from "./screens/Reports";
 import { Settings } from "./screens/Settings";
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
       { path: "complexity", Component: Complexity },
       { path: "ai-review", Component: AIReview },
       { path: "build-ci", Component: BuildCI },
+      { path: "container-insights", Component: ContainerInsights },
       { path: "risk-scoring", Component: RiskScoring },
       { path: "reports", Component: Reports },
       { path: "settings", Component: Settings },

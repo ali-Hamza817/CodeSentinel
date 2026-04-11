@@ -8,6 +8,7 @@ import {
   BarChart3,
   Sparkles,
   Hammer,
+  Container,
   FileText,
   Settings,
   Search,
@@ -17,6 +18,14 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
+import { useProjectStore } from "../store/projectStore";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "./ui/select";
 
 const navigationItems = [
   { path: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -27,44 +36,64 @@ const navigationItems = [
   { path: "/complexity", icon: BarChart3, label: "Complexity" },
   { path: "/ai-review", icon: Sparkles, label: "AI Review" },
   { path: "/build-ci", icon: Hammer, label: "Build & CI" },
+  { path: "/container-insights", icon: Container, label: "Container Insights" },
   { path: "/reports", icon: FileText, label: "Reports" },
   { path: "/settings", icon: Settings, label: "Settings" },
 ];
 
 export function MainLayout() {
   const location = useLocation();
+  const { projects, activeProjectId, setActiveProject } = useProjectStore();
+  const activeProject = projects.find(p => p.id === activeProjectId);
 
   return (
     <div className="h-screen w-screen flex flex-col bg-slate-50">
       {/* Top Bar */}
-      <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+      <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-sm z-10">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 pr-6 border-r border-slate-100">
             <Shield className="w-7 h-7 text-blue-600" />
-            <h1 className="text-xl font-semibold text-slate-900">CodeSentinel</h1>
+            <span className="text-xl font-bold tracking-tight text-slate-900">CodeSentinel</span>
           </div>
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 gap-1.5">
-            <Lock className="w-3 h-3" />
-            100% Local Processing
-          </Badge>
+          
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-slate-500">Project:</span>
+            <Select value={activeProjectId || ""} onValueChange={setActiveProject}>
+              <SelectTrigger className="w-[200px] h-9 bg-slate-50/50 border-slate-200">
+                <SelectValue placeholder="Select Project" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    <div className="flex items-center gap-2">
+                      <FolderGit2 className="w-4 h-4 text-blue-500" />
+                      <span>{project.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4 flex-1 max-w-2xl mx-8">
+        <div className="flex items-center gap-4 flex-1 max-w-xl mx-8">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
-              placeholder="Search files, functions..."
-              className="pl-10 bg-slate-50 border-slate-200"
+              placeholder={`Search in ${activeProject?.name || 'project'}...`}
+              className="pl-10 h-9 bg-slate-50 border-slate-200 focus-visible:ring-blue-500"
             />
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            Scan Project
-          </Button>
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <User className="w-5 h-5" />
+          <Badge variant="outline" className="bg-blue-50/50 text-blue-700 border-blue-100 gap-1.5 hidden lg:flex">
+            <Lock className="w-3 h-3" />
+            Lumina Engine v4.0
+          </Badge>
+          <div className="h-8 w-[1px] bg-slate-100 mx-1" />
+          <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100">
+            <User className="w-5 h-5 text-slate-600" />
           </Button>
         </div>
       </header>
