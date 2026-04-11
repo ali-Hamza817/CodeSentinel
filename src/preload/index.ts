@@ -12,6 +12,7 @@ const api = {
   cloneRepo: (url: string) => ipcRenderer.invoke('clone-repo', url),
   getFiles: (path: string) => ipcRenderer.invoke('get-files', path),
   readFile: (path: string) => ipcRenderer.invoke('read-file', path),
+  scanFile: (path: string) => ipcRenderer.invoke('scan-file', path),
   getAIReview: (code: string, file: string) => ipcRenderer.invoke('get-ai-review', code, file),
   minimize: () => ipcRenderer.send('window-minimize'),
   maximize: () => ipcRenderer.send('window-maximize'),

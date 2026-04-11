@@ -6,6 +6,7 @@ import os from 'os'
 import sqlite3 from 'sqlite3'
 import { RepoService } from './repoService'
 import { AIService } from './aiService'
+import fs from 'fs-extra'
 
 const repoService = new RepoService()
 const aiService = new AIService()
@@ -158,6 +159,10 @@ ipcMain.handle('read-file', async (_, filePath) => {
 
 ipcMain.handle('clone-repo', async (_, url) => {
   return await repoService.cloneRepository(url)
+})
+
+ipcMain.handle('scan-file', async (_, filePath) => {
+  return await repoService.scanFile(filePath)
 })
 
 ipcMain.handle('get-ai-review', async (_, code, fileName) => {

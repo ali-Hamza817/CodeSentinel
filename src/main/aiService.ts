@@ -24,18 +24,19 @@ export class AIService {
   async getSecurityReview(code: string, fileName: string): Promise<AIReviewResult[]> {
     const prompt = `
       Analyze the following code from file "${fileName}" for security vulnerabilities (CWE).
-      Return only a JSON array of issues found. Each issue should have:
+      Return ONLY a raw JSON array of objects. Do not include markdown code blocks or explanations outside the JSON.
+      Each object MUST have:
       - file: string
-      - line: number (if applicable)
-      - snippet: string (the problematic code)
-      - issue: string (description of the vulnerability)
+      - line: number
+      - snippet: string (the exact problematic code snippet)
+      - issue: string (title/description of the vulnerability)
       - severity: "Critical" | "High" | "Medium" | "Low"
-      - recommendation: string (how to fix it)
+      - recommendation: string (detailed remediation step)
 
-      Code:
-      \`\`\`
+      If no issues are found, return an empty array [].
+
+      Code to analyze:
       ${code}
-      \`\`\`
     `;
 
     try {
