@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderGit2, Upload, Clock, ExternalLink } from "lucide-react";
+import { FolderGit2, Upload, Clock, ExternalLink, Trash2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent } from "../components/ui/card";
@@ -8,7 +8,7 @@ import { toast } from "sonner";
 
 export function Repository() {
   const [repoUrl, setRepoUrl] = useState("");
-  const { projects, addProject, setActiveProject, startAnalysis } = useProjectStore();
+  const { projects, addProject, setActiveProject, removeProject } = useProjectStore();
   const [isConnecting, setIsConnecting] = useState(false);
 
   const handleConnect = async () => {
@@ -20,14 +20,22 @@ export function Repository() {
       await addProject({
         name: repoName,
         url: repoUrl,
-        path: "", // This will be set by the cloneRepo logic in the store
+        path: "",
       });
       setRepoUrl("");
       toast.success(`Project ${repoName} initialized for analysis!`);
-    } catch (err) {
-      toast.error("Failed to connect repository. check if URL is valid.");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to connect repository. check if URL is valid.");
     } finally {
       setIsConnecting(false);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm("Are you sure you want to delete this project? Data and local workspace will be removed.")) {
+      await removeProject(id);
+      toast.success("Project removed successfully");
     }
   };
 
@@ -46,7 +54,6 @@ export function Repository() {
         </Button>
       </div>
 
-      {/* GitHub Repository Input */}
       <Card className="border-slate-200 shadow-sm overflow-hidden bg-gradient-to-r from-blue-50/50 to-white">
         <CardContent className="p-8">
           <div className="space-y-6">
@@ -88,7 +95,6 @@ export function Repository() {
         </CardContent>
       </Card>
 
-      {/* Active Projects */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-slate-900">Recent Projects</h3>
@@ -149,9 +155,19 @@ export function Repository() {
                         <span>{project.lastScanned}</span>
                       </div>
                       
-                      <Button variant="ghost" size="icon" className="group-hover:translate-x-0.5 transition-transform">
-                        <ExternalLink className="w-4 h-4 text-slate-400" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={(e) => handleDelete(e, project.id)}
+                          className="hover:bg-red-50 hover:text-red-600 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="group-hover:translate-x-0.5 transition-transform">
+                          <ExternalLink className="w-4 h-4 text-slate-400" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>

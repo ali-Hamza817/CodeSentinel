@@ -20,8 +20,8 @@ export function StartupCheck({ onComplete }: { onComplete: () => void }) {
   const [steps, setSteps] = useState({
     hardware: { status: 'pending', label: 'Hardware Verification', detail: 'Checking RAM and Core Count' },
     docker: { status: 'pending', label: 'Docker Runtime', detail: 'Verifying Docker Desktop status' },
-    ollama: { status: 'pending', label: 'AI Engine (Ollama)', detail: 'Checking model presence' },
-    model: { status: 'pending', label: 'Llama3 Intelligence', detail: 'Verifying model local state' }
+    ollama: { status: 'pending', label: 'AI Container Pulse', detail: 'Provisioning Ollama Runtime' },
+    model: { status: 'pending', label: 'Llama 3.2 Intelligence', detail: 'Pulling Model into Sandbox' }
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -48,12 +48,19 @@ export function StartupCheck({ onComplete }: { onComplete: () => void }) {
       setSteps(s => ({ ...s, docker: { ...s.docker, status: 'success' } }));
 
       // 3. Ollama & Model Pull
-      setSteps(s => ({ ...s, ollama: { ...s.ollama, status: 'loading' }, model: { ...s.model, status: 'loading' } }));
+      setSteps(s => ({ ...s, ollama: { ...s.ollama, status: 'loading' } }));
+      const aiDockerStatus = await (window as any).api.ensureAIDocker();
+      if (aiDockerStatus === 'error') {
+        throw new Error("Failed to start AI Container. Is Docker Desktop running?");
+      }
+      setSteps(s => ({ ...s, ollama: { ...s.ollama, status: 'success' } }));
+
+      setSteps(s => ({ ...s, model: { ...s.model, status: 'loading' } }));
       const pullResult = await (window as any).api.pullModel();
       if (pullResult === 'error') {
-        throw new Error("Failed to communicate with Ollama. Is it installed and running?");
+        throw new Error("Failed to pull Llama 3.2 into the container sandbox.");
       }
-      setSteps(s => ({ ...s, ollama: { ...s.ollama, status: 'success' }, model: { ...s.model, status: 'success' } }));
+      setSteps(s => ({ ...s, model: { ...s.model, status: 'success' } }));
 
       // 4. Hydrate Store
       await useProjectStore.getState().loadProjects();
@@ -81,7 +88,7 @@ export function StartupCheck({ onComplete }: { onComplete: () => void }) {
         <Card className="border-none shadow-2xl bg-white/80 backdrop-blur-xl overflow-hidden rounded-3xl">
           <CardContent className="p-8 space-y-6">
             {error ? (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
                   <div className="text-left">
@@ -89,6 +96,24 @@ export function StartupCheck({ onComplete }: { onComplete: () => void }) {
                     <p className="text-xs text-red-700 mt-1">{error}</p>
                   </div>
                 </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                    <Button 
+                        variant="outline"
+                        onClick={() => window.open('https://www.docker.com/products/docker-desktop/', '_blank')}
+                        className="text-[10px] font-black uppercase tracking-widest border-slate-200"
+                    >
+                        GET DOCKER
+                    </Button>
+                    <Button 
+                        variant="outline"
+                        onClick={() => window.open('https://ollama.com/', '_blank')}
+                        className="text-[10px] font-black uppercase tracking-widest border-slate-200"
+                    >
+                        GET OLLAMA
+                    </Button>
+                </div>
+
                 <Button 
                   onClick={() => { setError(null); runChecks(); }}
                   className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-xl h-12 font-bold"

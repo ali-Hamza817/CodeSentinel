@@ -40,3 +40,6 @@ release/
 *.db
 *.sqlite
 
+
+test-ai.cjs
+test-repo/

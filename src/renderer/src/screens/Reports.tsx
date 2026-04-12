@@ -1,227 +1,134 @@
-import { FileText, Download, Eye, Calendar } from "lucide-react";
+import {  FileText, Shield, BarChart3, Clock, CheckCircle, Download, FileJson, ShieldOff, BrainCircuit, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-
-const reportSummary = {
-  projectName: "ecommerce-platform",
-  scanDate: "April 11, 2026",
-  totalFiles: 1247,
-  riskScore: 42,
-  vulnerabilities: {
-    critical: 3,
-    high: 8,
-    medium: 15,
-    low: 24,
-  },
-  complexity: {
-    average: 14.2,
-    highRisk: 10,
-  },
-  buildStatus: "Passed",
-  testsPassed: 199,
-  testsFailed: 3,
-};
+import { useProjectStore } from "../store/projectStore";
 
 export function Reports() {
+  const { getActiveProject } = useProjectStore();
+  const activeProject = getActiveProject();
+
+  if (!activeProject) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full space-y-6 animate-in fade-in duration-700">
+        <div className="p-6 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 text-left">
+          <ShieldOff className="w-16 h-16 text-slate-300 mx-auto" />
+        </div>
+        <div className="text-center space-y-1">
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight text-center">No Active Workspace</h2>
+          <p className="text-sm text-slate-500 font-medium italic text-center">Please select a repository to generate architectural reports.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const findings = activeProject.findings || [];
+  const metrics = activeProject.metrics;
+  const criticalCount = findings.filter(f => f.severity === 'critical').length;
+  const aiCount = findings.filter(f => f.type?.startsWith('AI:')).length;
+
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-slate-900">Reports</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Generate and export analysis reports
+    <div className="p-8 space-y-8 animate-in fade-in duration-700">
+      <div className="flex items-start justify-between">
+        <div className="text-left">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 text-left">Audit Records</h2>
+          <p className="text-sm font-medium text-slate-500 mt-1 text-left">
+            Exportable analysis results for <span className="text-blue-600 font-bold">{activeProject.name}</span>
           </p>
         </div>
-
         <div className="flex gap-2">
-          <Button variant="outline">
-            <Eye className="w-4 h-4 mr-2" />
-            Preview
+          <Button variant="outline" className="text-xs font-bold border-slate-200">
+            Export PDF
           </Button>
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Download className="w-4 h-4 mr-2" />
-            Generate Report
+          <Button className="bg-slate-900 hover:bg-black text-xs font-bold text-white px-6">
+            Generate New Audit
           </Button>
         </div>
       </div>
 
-      {/* Export Options */}
-      <Card className="border-slate-200">
-        <CardHeader>
-          <CardTitle className="text-base">Export Options</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            <button className="p-6 border-2 border-slate-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors text-left">
-              <div className="flex items-center gap-3 mb-2">
-                <FileText className="w-6 h-6 text-blue-600" />
-                <h3 className="font-semibold text-slate-900">PDF Report</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <Card className="border-slate-200 shadow-sm overflow-hidden text-left text-left">
+          <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+             <div className="flex items-center gap-2 text-left">
+                <Clock className="w-4 h-4 text-blue-600" />
+                <CardTitle className="text-sm font-bold text-slate-700 text-left">Summary Metrics</CardTitle>
+             </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                <span className="text-sm text-slate-500 font-medium text-left">Total Architectural Volume</span>
+                <span className="text-sm font-bold text-slate-900 text-left">{metrics.totalFiles} Files</span>
               </div>
-              <p className="text-sm text-slate-600">
-                Comprehensive report with charts and detailed findings
-              </p>
-            </button>
-
-            <button className="p-6 border-2 border-slate-200 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors text-left">
-              <div className="flex items-center gap-3 mb-2">
-                <FileText className="w-6 h-6 text-blue-600" />
-                <h3 className="font-semibold text-slate-900">JSON Export</h3>
+              <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                <span className="text-sm text-slate-500 font-medium text-left">Vulnerability Density</span>
+                <span className="text-sm font-bold text-slate-900 text-left">{findings.length} findings</span>
               </div>
-              <p className="text-sm text-slate-600">
-                Machine-readable data for integration and automation
-              </p>
-            </button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Report Preview */}
-      <Card className="border-slate-200">
-        <CardHeader>
-          <CardTitle className="text-base">Report Preview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-white border-2 border-slate-200 rounded-lg p-8 space-y-8">
-            {/* Report Header */}
-            <div className="border-b border-slate-200 pb-6">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h1 className="text-3xl font-bold text-slate-900 mb-2">
-                    CodeSentinel Analysis Report
-                  </h1>
-                  <p className="text-lg text-slate-600">
-                    {reportSummary.projectName}
-                  </p>
-                </div>
-                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                  100% Local Processing
-                </Badge>
+              <div className="flex justify-between items-center py-2 border-b border-slate-50">
+                <span className="text-sm text-slate-500 font-medium text-left">AI Logic Insights</span>
+                <span className="text-sm font-bold text-purple-600 text-left">{aiCount} reasoning hits</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-slate-500">
-                <Calendar className="w-4 h-4" />
-                <span>Generated on {reportSummary.scanDate}</span>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-sm text-slate-500 font-medium text-left">Last Audit Timestamp</span>
+                <span className="text-sm font-bold text-slate-400 text-left">{activeProject.lastScanned}</span>
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Executive Summary */}
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">
-                Executive Summary
-              </h2>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <p className="text-sm text-slate-500 mb-1">Total Files</p>
-                  <p className="text-2xl font-semibold text-slate-900">
-                    {reportSummary.totalFiles.toLocaleString()}
-                  </p>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <p className="text-sm text-slate-500 mb-1">Risk Score</p>
-                  <p className="text-2xl font-semibold text-slate-900">
-                    {reportSummary.riskScore}/100
-                  </p>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <p className="text-sm text-slate-500 mb-1">Build Status</p>
-                  <p className="text-2xl font-semibold text-green-600">
-                    {reportSummary.buildStatus}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Vulnerabilities */}
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">
-                Security Vulnerabilities
-              </h2>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200">
-                  <span className="font-medium text-red-900">Critical Issues</span>
-                  <span className="text-2xl font-semibold text-red-700">
-                    {reportSummary.vulnerabilities.critical}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
-                  <span className="font-medium text-orange-900">High Issues</span>
-                  <span className="text-2xl font-semibold text-orange-700">
-                    {reportSummary.vulnerabilities.high}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                  <span className="font-medium text-yellow-900">Medium Issues</span>
-                  <span className="text-2xl font-semibold text-yellow-700">
-                    {reportSummary.vulnerabilities.medium}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
-                  <span className="font-medium text-green-900">Low Issues</span>
-                  <span className="text-2xl font-semibold text-green-700">
-                    {reportSummary.vulnerabilities.low}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Complexity */}
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">
-                Code Complexity
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <p className="text-sm text-slate-500 mb-1">
-                    Average Complexity
-                  </p>
-                  <p className="text-2xl font-semibold text-slate-900">
-                    {reportSummary.complexity.average}
-                  </p>
-                </div>
-                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <p className="text-sm text-slate-500 mb-1">
-                    High Risk Functions
-                  </p>
-                  <p className="text-2xl font-semibold text-slate-900">
-                    {reportSummary.complexity.highRisk}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Test Results */}
-            <div>
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">
-                Test Results
-              </h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-sm text-green-600 mb-1">Tests Passed</p>
-                  <p className="text-2xl font-semibold text-green-700">
-                    {reportSummary.testsPassed}
-                  </p>
-                </div>
-                <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-                  <p className="text-sm text-red-600 mb-1">Tests Failed</p>
-                  <p className="text-2xl font-semibold text-red-700">
-                    {reportSummary.testsFailed}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="border-t border-slate-200 pt-6">
-              <div className="flex items-center justify-between text-sm text-slate-500">
-                <p>
-                  Generated by CodeSentinel – Secure Local Code Analysis Platform
+        <Card className="border-slate-200 shadow-lg overflow-hidden bg-white text-left text-left">
+           <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+             <div className="flex items-center gap-2">
+                <BrainCircuit className="w-4 h-4 text-purple-600" />
+                <CardTitle className="text-sm font-bold text-slate-700 text-left">Strategic Risk Overview</CardTitle>
+             </div>
+          </CardHeader>
+          <CardContent className="p-8 text-center text-left">
+             <div className="inline-flex items-center justify-center p-4 bg-purple-50 rounded-2xl mb-4">
+                 <Shield className="w-10 h-10 text-purple-600" />
+             </div>
+             <div className="space-y-2 text-left">
+                <h3 className="text-lg font-bold text-slate-900 text-center">Architecture Verified</h3>
+                <p className="text-sm text-slate-500 font-medium text-center">
+                    The Llama3 reasoning engine has verified <span className="text-purple-600 font-bold">{aiCount} logic vectors</span>. 
+                    {criticalCount > 0 ? ` Immediate attention is required for the ${criticalCount} critical findings.` : ' No high-severity vulnerabilities were identified during the deep Reasoning pass.'}
                 </p>
-                <p>Powered by Local AI (Ollama) – Privacy Preserved</p>
-              </div>
+             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">Detailed Audit Record</h3>
+        <Card className="border-slate-200 shadow-sm text-left">
+          <CardContent className="p-0 text-left">
+            <div className="divide-y divide-slate-100">
+              {findings.map((f, i) => (
+                <div key={i} className="p-6 flex items-start gap-4 hover:bg-slate-50 transition-colors text-left text-left">
+                  <div className={`p-2 rounded-lg h-fit ${
+                        f.severity === 'critical' ? 'bg-red-50 text-red-600' :
+                        f.severity === 'high' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'
+                  }`}>
+                    <Activity className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 space-y-1 text-left">
+                    <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-slate-900 text-left">{f.title || f.message}</p>
+                        <Badge variant="outline" className="text-[10px] font-bold text-slate-400 uppercase border-slate-100">
+                            {f.severity}
+                        </Badge>
+                    </div>
+                    <p className="text-xs text-slate-500 leading-relaxed font-normsl text-left">
+                      {f.description.slice(0, 160)}...
+                    </p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pt-1 text-left">Origin: {f.file}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

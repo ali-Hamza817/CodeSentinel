@@ -1,108 +1,157 @@
-import { useState } from "react";
-import { Play, CheckCircle, XCircle, Clock, Package } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Play, CheckCircle, XCircle, Clock, Package, ShieldOff, Terminal, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-
-const testResults = [
-  { name: "Authentication Tests", passed: 24, failed: 0, status: "passed" },
-  { name: "API Integration Tests", passed: 18, failed: 2, status: "failed" },
-  { name: "Database Tests", passed: 15, failed: 0, status: "passed" },
-  { name: "Unit Tests", passed: 142, failed: 1, status: "failed" },
-];
-
-const buildLogs = [
-  { time: "00:00:01", message: "Installing dependencies..." },
-  { time: "00:00:15", message: "Dependencies installed successfully" },
-  { time: "00:00:16", message: "Running TypeScript compiler..." },
-  { time: "00:00:18", message: "TypeScript compilation completed" },
-  { time: "00:00:19", message: "Running tests..." },
-  { time: "00:00:32", message: "✓ 199 tests passed" },
-  { time: "00:00:32", message: "✗ 3 tests failed" },
-  { time: "00:00:33", message: "Building production bundle..." },
-  { time: "00:00:45", message: "Build completed with warnings" },
-];
+import { useProjectStore } from "../store/projectStore";
 
 export function BuildCI() {
+  const { getActiveProject, updateProject } = useProjectStore();
+  const activeProject = getActiveProject();
+  const [logs, setLogs] = useState<string[]>([]);
   const [isBuilding, setIsBuilding] = useState(false);
-  const totalPassed = testResults.reduce((sum, t) => sum + t.passed, 0);
-  const totalFailed = testResults.reduce((sum, t) => sum + t.failed, 0);
-  const totalTests = totalPassed + totalFailed;
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const [duration, setDuration] = useState<number>(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (activeProject?.buildLogs) {
+      setLogs(activeProject.buildLogs);
+    }
+  }, [activeProject?.id]);
+
+  useEffect(() => {
+    const removeListener = (window as any).api.onBuildLog((data: string) => {
+      setLogs((prev) => [...prev, data]);
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+    });
+
+    return () => {
+        if (removeListener && typeof removeListener === 'function') removeListener();
+    };
+  }, []);
+
+  useEffect(() => {
+    let interval: any;
+    if (isBuilding) {
+      interval = setInterval(() => {
+        setDuration(Math.floor((Date.now() - (startTime || Date.now())) / 1000));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isBuilding, startTime]);
+
+  if (!activeProject) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full space-y-6 animate-in fade-in duration-700">
+        <div className="p-6 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 text-left">
+          <ShieldOff className="w-16 h-16 text-slate-300 mx-auto" />
+        </div>
+        <div className="text-center space-y-1">
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight text-center">No Active Workspace</h2>
+          <p className="text-sm text-slate-500 font-medium italic text-center text-center">Please select or connect a repository to run pipelines.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const handleRunBuild = async () => {
+    setIsBuilding(true);
+    setLogs([]);
+    setStartTime(Date.now());
+    setDuration(0);
+
+    try {
+      const exitCode = await (window as any).api.runBuild(activeProject.path);
+      const status = exitCode === 0 ? 'Passed' : 'Failed';
+      
+      await updateProject(activeProject.id, {
+        metrics: { ...activeProject.metrics, buildStatus: status },
+        buildLogs: logs
+      });
+    } catch (err) {
+      console.error("Build execution error:", err);
+    } finally {
+      setIsBuilding(false);
+    }
+  };
+
+  const buildStatus = activeProject.metrics.buildStatus;
 
   return (
-    <div className="p-8 space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-slate-900">Build & CI</h2>
-          <p className="text-sm text-slate-500 mt-1">
-            Automated build and test execution
+    <div className="p-8 space-y-8 animate-in fade-in duration-700">
+      <div className="flex items-start justify-between">
+        <div className="text-left">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 text-left text-left">Pipeline Orchestrator</h2>
+          <p className="text-sm font-medium text-slate-500 mt-1 text-left text-left">
+            Compiling isolated architecture for <span className="text-blue-600 font-bold">{activeProject.name}</span>
           </p>
         </div>
 
         <Button
-          onClick={() => setIsBuilding(!isBuilding)}
+          onClick={handleRunBuild}
           disabled={isBuilding}
-          className="bg-blue-600 hover:bg-blue-700"
+          className={`${isBuilding ? 'bg-slate-100 text-slate-400' : 'bg-slate-900 hover:bg-black shadow-lg shadow-slate-100'} text-xs font-bold h-10 px-6`}
         >
-          <Play className="w-4 h-4 mr-2" />
-          {isBuilding ? "Building..." : "Run Build"}
+          {isBuilding ? (
+            <div className="flex items-center gap-2">
+               <div className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+               EXECUTING_CYCLE...
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Play className="w-4 h-4 fill-current" />
+              INITIATE BUILD
+            </div>
+          )}
         </Button>
       </div>
 
-      {/* Build Status */}
-      <div className="grid grid-cols-3 gap-6">
-        <Card className="border-slate-200">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="border-slate-200 shadow-sm overflow-hidden text-left text-left">
           <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <Package className="w-8 h-8 text-blue-600" />
-              <div>
-                <p className="text-sm text-slate-500 mb-1">Build Tool</p>
-                <p className="text-lg font-semibold text-slate-900">npm</p>
+            <div className="flex items-center gap-4 text-left">
+              <div className="p-3 bg-blue-50 rounded-xl">
+                <Package className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="text-left text-left">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">Build Tool</p>
+                <p className="text-lg font-bold text-slate-900 text-left text-left">NPM / SHELL</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <Clock className="w-8 h-8 text-blue-600" />
-              <div>
-                <p className="text-sm text-slate-500 mb-1">Build Duration</p>
-                <p className="text-lg font-semibold text-slate-900">45s</p>
+        <Card className="border-slate-200 shadow-sm overflow-hidden text-left text-left">
+          <CardContent className="p-6 text-left">
+            <div className="flex items-center gap-4 text-left">
+              <div className="p-3 bg-slate-50 rounded-xl">
+                <Clock className="w-5 h-5 text-slate-600" />
+              </div>
+              <div className="text-left text-left">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider text-left">Cycle Duration</p>
+                <p className="text-lg font-bold text-slate-900 text-left text-left">{duration}s <span className="text-xs font-semibold text-slate-400">Elapsed</span></p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card
-          className={`${
-            totalFailed > 0
-              ? "border-red-200 bg-red-50"
-              : "border-green-200 bg-green-50"
-          }`}
+          className={`shadow-sm overflow-hidden border-none text-left text-left ${
+            buildStatus === 'Failed' ? "bg-red-500" : buildStatus === 'Passed' ? "bg-green-600" : "bg-slate-900"
+          } text-white`}
         >
           <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              {totalFailed > 0 ? (
-                <XCircle className="w-8 h-8 text-red-600" />
-              ) : (
-                <CheckCircle className="w-8 h-8 text-green-600" />
-              )}
-              <div>
-                <p
-                  className={`text-sm mb-1 ${
-                    totalFailed > 0 ? "text-red-600" : "text-green-600"
-                  }`}
-                >
-                  Build Status
-                </p>
-                <p
-                  className={`text-lg font-semibold ${
-                    totalFailed > 0 ? "text-red-700" : "text-green-700"
-                  }`}
-                >
-                  {totalFailed > 0 ? "Failed" : "Passed"}
+            <div className="flex items-center gap-4 text-left">
+              <div className="p-3 bg-white/10 rounded-xl">
+                {buildStatus === 'Failed' ? <XCircle className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
+              </div>
+              <div className="text-left text-left text-left">
+                <p className="text-xs font-bold text-white/60 uppercase tracking-wider text-left text-left">Current State</p>
+                <p className="text-lg font-bold text-white text-left text-left">
+                  {isBuilding ? "IN_PROGRESS" : buildStatus || "STANDBY"}
                 </p>
               </div>
             </div>
@@ -110,100 +159,39 @@ export function BuildCI() {
         </Card>
       </div>
 
-      {/* Test Results */}
-      <Card className="border-slate-200">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Test Results</CardTitle>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-slate-600">
-                {totalPassed} / {totalTests} passed
-              </span>
-              <Badge
-                variant="outline"
-                className={
-                  totalFailed > 0
-                    ? "bg-red-50 text-red-700 border-red-200"
-                    : "bg-green-50 text-green-700 border-green-200"
-                }
-              >
-                {((totalPassed / totalTests) * 100).toFixed(1)}%
-              </Badge>
-            </div>
+      <Card className="border-slate-900 bg-slate-950 shadow-xl overflow-hidden text-left text-left">
+        <CardHeader className="bg-slate-900/50 border-b border-white/5 px-6 py-4">
+          <div className="flex items-center justify-between text-left">
+             <CardTitle className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 text-left text-left">
+                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                Live Binary Stream
+             </CardTitle>
+             <div className="flex gap-1.5 text-left text-left">
+                <div className="w-2 h-2 rounded-full bg-red-500/20" />
+                <div className="w-2 h-2 rounded-full bg-yellow-500/20" />
+                <div className="w-2 h-2 rounded-full bg-green-500/20" />
+             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {testResults.map((test, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-4 rounded-lg border border-slate-200"
-              >
-                <div className="flex items-center gap-3">
-                  {test.status === "passed" ? (
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                  ) : (
-                    <XCircle className="w-5 h-5 text-red-600" />
-                  )}
-                  <div>
-                    <p className="font-medium text-slate-900">{test.name}</p>
-                    <p className="text-sm text-slate-500">
-                      {test.passed + test.failed} tests
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-6">
-                  <div className="text-right">
-                    <p className="text-sm text-green-600 font-medium">
-                      {test.passed} passed
-                    </p>
-                  </div>
-                  {test.failed > 0 && (
-                    <div className="text-right">
-                      <p className="text-sm text-red-600 font-medium">
-                        {test.failed} failed
-                      </p>
-                    </div>
-                  )}
-                  <Badge
-                    variant="outline"
-                    className={`${
-                      test.status === "passed"
-                        ? "bg-green-50 text-green-700 border-green-200"
-                        : "bg-red-50 text-red-700 border-red-200"
-                    }`}
-                  >
-                    {test.status}
-                  </Badge>
-                </div>
+        <CardContent className="p-0 text-left">
+          <div 
+            ref={scrollRef}
+            className="p-6 font-mono text-[11px] h-96 overflow-y-auto custom-scrollbar text-left text-left"
+          >
+            {logs.length === 0 && !isBuilding && (
+              <div className="h-full flex flex-col items-center justify-center space-y-2 opacity-20 text-left text-left">
+                 <Terminal className="w-8 h-8 text-white mx-auto" />
+                 <p className="text-white font-bold uppercase tracking-widest text-center">Console stream in standby</p>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Build Output */}
-      <Card className="border-slate-200">
-        <CardHeader>
-          <CardTitle className="text-base">Build Output</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-slate-950 rounded-lg p-4 font-mono text-sm space-y-1 max-h-80 overflow-y-auto">
-            {buildLogs.map((log, index) => (
-              <div key={index} className="flex gap-3">
-                <span className="text-slate-500">{log.time}</span>
-                <span
-                  className={
-                    log.message.includes("✓")
-                      ? "text-green-400"
-                      : log.message.includes("✗")
-                      ? "text-red-400"
-                      : log.message.includes("warning")
-                      ? "text-yellow-400"
-                      : "text-slate-300"
-                  }
-                >
-                  {log.message}
+            )}
+            {logs.map((log, index) => (
+              <div key={index} className="flex gap-4 group text-left text-left">
+                <span className="text-slate-700 select-none w-8 text-right font-bold text-left">{index + 1}</span>
+                <span className={`flex-1 whitespace-pre-wrap leading-relaxed text-left ${
+                    log.includes("error") || log.includes("Error") ? "text-red-400 font-semibold" : 
+                    log.includes("✓") || log.includes("success") ? "text-green-400" : "text-slate-300"
+                }`}>
+                  {log}
                 </span>
               </div>
             ))}
