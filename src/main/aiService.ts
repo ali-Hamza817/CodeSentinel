@@ -9,16 +9,20 @@ export interface AIReviewResult {
   recommendation: string;
 }
 
+export interface AIRendererResponse {
+  findings: AIReviewResult[];
+  measures: string[];
+}
+
 export class AIService {
   private model: string = 'llama3.2';
   private client: Ollama;
-  private modelConfirmedReady: boolean = false; // cached — check once per session
+  private modelConfirmedReady: boolean = false;
 
   constructor() {
     this.client = new Ollama({ host: 'http://127.0.0.1:11434' });
   }
 
-  /** Check once and cache the result for the session */
   async isModelReady(): Promise<boolean> {
     if (this.modelConfirmedReady) return true;
     try {
@@ -28,79 +32,90 @@ export class AIService {
       );
       if (found) {
         this.modelConfirmedReady = true;
-        console.log('[AIService] llama3.2 confirmed ready ✓');
       }
       return found;
-    } catch (err) {
-      console.warn('[AIService] Could not reach Ollama container:', err);
+    } catch {
       return false;
     }
   }
 
-  private extractJsonArray(text: string): any[] {
-    // 1. Try to extract a JSON array from the text
-    const arrayMatch = text.match(/\[[\s\S]*\]/);
-    if (arrayMatch) {
-      try { return JSON.parse(arrayMatch[0]); } catch {}
+  private extractStructuredResponse(text: string): AIRendererResponse {
+    let findings: AIReviewResult[] = [];
+    let measures: string[] = [];
+
+    // 1. Try to find JSON block
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.findings) findings = parsed.findings;
+        if (parsed.measures) measures = parsed.measures;
+      } catch {}
     }
-    // 2. Try the whole text as JSON
-    try {
-      const parsed = JSON.parse(text.trim());
-      if (Array.isArray(parsed)) return parsed;
-      for (const key of ['findings', 'issues', 'vulnerabilities', 'results']) {
-        if (Array.isArray(parsed[key])) return parsed[key];
+
+    // 2. Fallback: If it's just an array, those are findings
+    if (findings.length === 0) {
+      const arrayMatch = text.match(/\[[\s\S]*\]/);
+      if (arrayMatch) {
+        try {
+          const parsed = JSON.parse(arrayMatch[0]);
+          if (Array.isArray(parsed)) findings = parsed;
+        } catch {}
       }
-    } catch {}
-    return [];
+    }
+
+    // 3. Last resort: If no findings, try to parse individual lines for lists
+    if (findings.length === 0 && measures.length === 0) {
+        // Just return empty if totally malformed
+    }
+
+    return { findings, measures: measures.slice(0, 5) }; // Caps measures at 5
   }
 
-  async getSecurityReview(code: string, fileName: string): Promise<AIReviewResult[]> {
-    // Check readiness (uses cache after first successful check)
+  async getSecurityReview(code: string, fileName: string): Promise<AIRendererResponse> {
     const ready = await this.isModelReady();
-    if (!ready) {
-      console.warn(`[AIService] llama3.2 not ready — skipping: ${fileName}`);
-      return [];
-    }
+    if (!ready) return { findings: [], measures: [] };
 
     const ext = fileName.split('.').pop() || '';
-    const langHint = ext === 'cs' ? 'C#' : ext === 'py' ? 'Python' : ext === 'js' || ext === 'ts' ? 'TypeScript/JavaScript' : ext;
+    const lang = ext === 'cs' ? 'C#' : ext === 'py' ? 'Python' : 'JavaScript';
 
-    const prompt = `Analyze this ${langHint} code for security vulnerabilities. File: "${fileName}"
+    const prompt = `Perform a HIGH-INTENSITY security audit on this ${lang} code. File: "${fileName}"
 
-Return ONLY a JSON array. Each item must be exactly:
-{"file":"${fileName}","line":<number>,"snippet":"<code>","issue":"<title>","severity":"Critical|High|Medium|Low","recommendation":"<fix>"}
+You must return a JSON object with this EXACT structure:
+{
+  "findings": [
+    {"file": "${fileName}", "line": 0, "snippet": "code", "issue": "vulnerability", "severity": "Critical|High|Medium|Low", "recommendation": "fix"}
+  ],
+  "measures": [
+    "One sentence security architecture recommendation for this file"
+  ]
+}
 
-Focus: hardcoded secrets, SQL injection, XSS, missing error handling, insecure APIs, resource leaks, input validation.
-Output the JSON array only — no explanation, no markdown.
+Focus on: hardcoded secrets, unsafe API usage, input validation, logic flaws, and .NET security best practices.
+Output ONLY the JSON object.
 
 Code:
-${code.slice(0, 5000)}`;
+${code.slice(0, 6000)}`;
 
     try {
-      console.log(`[AIService] → Analyzing: ${fileName}`);
       let fullResponse = '';
-
       const stream = await this.client.generate({
         model: this.model,
         prompt,
         stream: true,
-        options: { temperature: 0.1, num_predict: 1500 }
+        options: { temperature: 0.1, num_predict: 2000 }
       });
 
       for await (const chunk of stream) {
         fullResponse += chunk.response;
-        // Early exit once we have a complete JSON array
-        const trimmed = fullResponse.trim();
-        if (trimmed.endsWith(']') && trimmed.startsWith('[')) break;
+        // Early break if we have a closed JSON object at the end
+        if (fullResponse.trim().endsWith('}')) break;
       }
 
-      const results = this.extractJsonArray(fullResponse);
-      console.log(`[AIService] ← ${fileName}: ${results.length} findings`);
-      return results;
-
+      return this.extractStructuredResponse(fullResponse);
     } catch (error) {
-      console.error(`[AIService] Error for ${fileName}:`, error);
-      return [];
+      console.error(`[AIService] Inference failed:`, error);
+      return { findings: [], measures: [] };
     }
   }
 }

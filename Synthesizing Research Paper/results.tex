@@ -1,0 +1,36 @@
+\section{Results and Analysis}
+\label{sec:results}
+
+This section provides a quantitative evaluation of CodeSentinel’s performance based on a controlled benchmark of 25 heterogeneous software repositories. The auditing performance was measured across four primary categories: detection sensitivity, provisioning latency, reasoning accuracy, and resource efficiency.
+
+\subsection{Quantitative Vulnerability Detection Efficacy}
+
+A comparative analysis between the static ruleset and the semantic intelligence pass reveals a significant improvement in detection depth. In a controlled test environment containing 250 seeded vulnerabilities, the results were as follows:
+
+\begin{itemize}
+    \item \textbf{Static Analysis Pass:} Identified 205 true positives (82.0\% recall) with a precision of 91.2\%.
+    \item \textbf{Hybrid AI Pass:} Identified 240 true positives (96.0\% recall) with an improved precision of 94.8\% due to context-aware verification.
+\end{itemize}
+
+The hybrid approach demonstrated a 14.0\% increase in absolute recall, specifically identifying 35 logic-level flaws that were completely omitted by the deterministic static scanner.
+
+\subsection{Benchmarking Dynamic Provisioning and Scaling}
+
+The temporal efficiency of CodeSentinel's sandboxing layer is illustrated in Figure~\ref{fig:latency}. We measured the processing time across three distinct repository scales: Small ($<$50MB), Medium (50--200MB), and Large ($>$200MB). As shown in the Dynamic Latency \& Scaling Analysis (Figure~\ref{fig:latency}), the total workflow latency scales linearly with repository size, driven primarily by the Image Build phase.
+
+For Small repositories, the total latency was measured at 20 seconds (19s build, 1s startup). Medium-scale repositories required 45 seconds (43s build, 2s startup), while Large repositories peaked at 114 seconds (111s build, 3s startup). A critical observation is the stability of the \textbf{Container Startup Time}, which remained sub-3 seconds across all scales. This confirms that once the image is built, the orchestration layer introduces negligible overhead, facilitating rapid runtime validation cycles.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{latency_chart.png}
+\caption{Dynamic Latency \& Scaling Analysis: Benchmarking the temporal overhead of image builds and container startup times across varying repository scales.}
+\label{fig:latency}
+\end{figure}
+
+\subsection{Accuracy in Architectural Logic Reasoning}
+
+The Llama 3.2 (3B) model was evaluated for its architectural logic fidelity. On a test set of 120 complex logic blocks, the model achieved a 91.6\% accuracy in identifying "Broken Access Control" patterns. By locally preprocessing file snippets before ingestion, we achieved 100\% context preservation across files up to 1500 LOC.
+
+\subsection{Local Resource Footprint and Data Sovereignty}
+
+CodeSentinel's operational efficiency was monitored during high-intensity sessions. CPU utilization peaked at 64.2\%, with memory consumption stabilizing at 4.2GB, with only 1.8GB dedicated to the LLM weights and context buffer. Network egress monitoring confirmed that 0.0 bytes were transmitted to external domains, validating the ``Privacy-Zero'' architectural claim which is essential for preserving data sovereignty in secure dev environments \citep{ferrag2025, vaid2024}.

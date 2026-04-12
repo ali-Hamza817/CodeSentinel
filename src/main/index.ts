@@ -79,11 +79,12 @@ function initDatabase() {
         status TEXT,
         metrics TEXT,
         findings TEXT,
-        sandbox_status TEXT
+        sandbox_status TEXT,
+        ai_reviews TEXT
       )
     `)
     // Safe migration for older DBs — ignore errors if columns already exist
-    const newCols = ['path TEXT', 'metrics TEXT', 'findings TEXT', 'sandbox_status TEXT']
+    const newCols = ['path TEXT', 'metrics TEXT', 'findings TEXT', 'sandbox_status TEXT', 'ai_reviews TEXT']
     newCols.forEach(col => {
       db.run(`ALTER TABLE projects ADD COLUMN ${col}`, () => {/* ignore error if exists */})
     })
@@ -144,7 +145,8 @@ ipcMain.handle('get-projects', () => {
         status: row.status || 'idle',
         sandboxStatus: row.sandbox_status || 'stopped',
         metrics: row.metrics ? JSON.parse(row.metrics) : { totalFiles: 0, vulnerabilities: 0, avgComplexity: 0, buildStatus: 'Pending' },
-        findings: row.findings ? JSON.parse(row.findings) : []
+        findings: row.findings ? JSON.parse(row.findings) : [],
+        aiReviews: row.ai_reviews ? JSON.parse(row.ai_reviews) : {}
       }))
       resolve(projects)
     })
@@ -155,8 +157,8 @@ ipcMain.handle('save-project', (_, project) => {
   return new Promise((resolve, reject) => {
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO projects
-        (id, name, url, path, last_scan, status, metrics, findings, sandbox_status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, name, url, path, last_scan, status, metrics, findings, sandbox_status, ai_reviews)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     stmt.run(
       project.id,
@@ -168,6 +170,7 @@ ipcMain.handle('save-project', (_, project) => {
       JSON.stringify(project.metrics || {}),
       JSON.stringify(project.findings || []),
       project.sandboxStatus || 'stopped',
+      JSON.stringify(project.aiReviews || {}),
       (err: any) => {
         if (err) reject(err)
         else resolve(true)

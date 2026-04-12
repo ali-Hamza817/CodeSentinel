@@ -1,6 +1,8 @@
 {
   "name": "code-sentinel",
   "version": "1.0.0",
+  "description": "Deep Intelligence Security Auditing Platform",
+  "author": "Ali Hamza",
   "main": "./out/main/index.js",
   "type": "module",
   "scripts": {
@@ -70,7 +72,8 @@
     "tailwind-merge": "3.2.0",
     "tw-animate-css": "1.3.8",
     "vaul": "1.1.2",
-    "zustand": "^5.0.12"
+    "zustand": "^5.0.12",
+    "ollama": "^0.6.3"
   },
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.2",
@@ -82,7 +85,6 @@
     "electron": "^41.2.0",
     "electron-builder": "^26.8.1",
     "electron-vite": "^5.0.0",
-    "ollama": "^0.6.3",
     "tailwindcss": "4.1.12",
     "vite": "6.3.5"
   },
@@ -101,6 +103,33 @@
   "pnpm": {
     "overrides": {
       "vite": "6.3.5"
+    }
+  },
+  "build": {
+    "productName": "CodeSentinel",
+    "appId": "com.codesentinel.app",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        "zip"
+      ]
+    },
+    "portable": {
+      "artifactName": "CodeSentinel_Portable.exe"
+    },
+    "asar": true,
+    "nsis": {
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false,
+      "deleteAppDataOnUninstall": true
     }
   }
 }

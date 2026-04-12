@@ -36,6 +36,7 @@ export interface Project {
   status: 'idle' | 'cloning' | 'scanning' | 'running' | 'completed' | 'failed';
   metrics: ProjectMetrics;
   findings: ScanFinding[];
+  aiReviews: Record<string, { findings: ScanFinding[]; measures: string[] }>;
   buildLogs?: string[];
   sandboxStatus?: 'stopped' | 'building' | 'running';
 }
@@ -55,6 +56,7 @@ interface ProjectState {
   setActiveProject: (id: string) => void;
   removeProject: (id: string) => Promise<void>;
   startDynamicRun: (id: string) => Promise<void>;
+  saveAIReview: (projectId: string, fileName: string, findings: any[], measures: string[]) => Promise<void>;
 }
 
 // Shared findings mapper — handles both StaticFinding and AIReviewResult shapes
@@ -99,7 +101,8 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
       status: 'idle',
       lastScanned: 'Never',
       metrics: { totalFiles: 0, vulnerabilities: 0, avgComplexity: 0, buildStatus: 'Pending' },
-      findings: []
+      findings: [],
+      aiReviews: {}
     };
 
     // Add to UI immediately
@@ -253,6 +256,28 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
         projects: state.projects.map(p => p.id === id ? { ...p, sandboxStatus: 'stopped' } : p)
       }));
     }
+  },
+  
+  saveAIReview: async (projectId: string, fileName: string, aiFindings: any[], measures: string[]) => {
+    const findings = mapFindings(aiFindings);
+    const state = get();
+    const project = state.projects.find(p => p.id === projectId);
+    if (!project) return;
+
+    const updatedReviews = {
+      ...(project.aiReviews || {}),
+      [fileName]: { findings, measures }
+    };
+
+    const updatedProject: Project = { 
+      ...project, 
+      aiReviews: updatedReviews 
+    };
+
+    set((state) => ({
+      projects: state.projects.map(p => p.id === projectId ? updatedProject : p)
+    }));
+    await (window as any).api.saveProject(updatedProject);
   },
 
   removeProject: async (id) => {
