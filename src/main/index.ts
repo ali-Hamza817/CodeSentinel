@@ -221,6 +221,10 @@ ipcMain.handle('get-ai-review', async (_, code, fileName) => {
   return await aiService.getSecurityReview(code, fileName)
 })
 
+ipcMain.handle('chat-with-architect', async (_, messages) => {
+  return await aiService.chatWithArchitect(messages)
+})
+
 // --- Execution & Docker Handlers ---
 
 ipcMain.handle('run-build', async (event, projectPath) => {

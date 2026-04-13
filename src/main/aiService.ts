@@ -118,4 +118,40 @@ ${code.slice(0, 6000)}`;
       return { findings: [], measures: [] };
     }
   }
+
+  async chatWithArchitect(messages: { role: string; content: string }[]): Promise<string> {
+    const ready = await this.isModelReady();
+    if (!ready) return "AI Service is not ready. Please ensure Ollama is running Llama 3.2.";
+
+    const systemPrompt = {
+      role: 'system',
+      content: `You are the CodeSentinel AI Security Architect—a senior security expert specialized in architectural reasoning and vulnerability discovery.
+      
+      Your goal is to provide deep, conversational audits. When you are provided with source code and findings:
+      1. Always prioritize data sovereignty (remind the user that all analysis is local).
+      2. If findings are present, explain the underlying logic flaw and why it exists.
+      3. Provide high-quality code snippets for remediation.
+      4. Be direct, technical, and professional. 
+      5. If no vulnerabilities are obvious, analyze complexity and maintainability.
+      6. Use markdown for better formatting.
+      
+      You are running in a private, containerized environment (Ollama + Llama 3.2).`
+    };
+
+    try {
+      // Ensure system prompt is always at the start
+      const finalMessages = [systemPrompt, ...messages];
+
+      const response = await this.client.chat({
+        model: this.model,
+        messages: finalMessages,
+        stream: false,
+        options: { temperature: 0.7 }
+      });
+      return response.message.content;
+    } catch (error) {
+      console.error(`[AIService] Chat failed:`, error);
+      return "I encountered an error while processing your request. Please try again.";
+    }
+  }
 }

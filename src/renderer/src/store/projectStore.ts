@@ -36,7 +36,12 @@ export interface Project {
   status: 'idle' | 'cloning' | 'scanning' | 'running' | 'completed' | 'failed';
   metrics: ProjectMetrics;
   findings: ScanFinding[];
-  aiReviews: Record<string, { findings: ScanFinding[]; measures: string[] }>;
+  aiReviews: Record<string, { 
+    findings: ScanFinding[]; 
+    measures: string[]; 
+    reasoning?: string;
+    messages?: { role: 'user' | 'assistant'; content: string }[] 
+  }>;
   buildLogs?: string[];
   sandboxStatus?: 'stopped' | 'building' | 'running';
 }
@@ -258,7 +263,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
     }
   },
   
-  saveAIReview: async (projectId: string, fileName: string, aiFindings: any[], measures: string[]) => {
+  saveAIReview: async (projectId: string, fileName: string, aiFindings: any[], measures: string[], reasoning?: string, messages?: { role: 'user' | 'assistant'; content: string }[]) => {
     const findings = mapFindings(aiFindings);
     const state = get();
     const project = state.projects.find(p => p.id === projectId);
@@ -266,7 +271,7 @@ export const useProjectStore = create<ProjectState>()((set, get) => ({
 
     const updatedReviews = {
       ...(project.aiReviews || {}),
-      [fileName]: { findings, measures }
+      [fileName]: { findings, measures, reasoning, messages }
     };
 
     const updatedProject: Project = { 

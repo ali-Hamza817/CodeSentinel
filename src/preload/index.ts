@@ -15,6 +15,7 @@ const api = {
   readFile: (path: string) => ipcRenderer.invoke('read-file', path),
   scanFile: (path: string) => ipcRenderer.invoke('scan-file', path),
   getAIReview: (code: string, file: string) => ipcRenderer.invoke('get-ai-review', code, file),
+  chatWithArchitect: (messages: any[]) => ipcRenderer.invoke('chat-with-architect', messages),
   
   // Execution & Docker
   runBuild: (path: string) => ipcRenderer.invoke('run-build', path),
