@@ -26,7 +26,8 @@ function createWindow(): void {
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
-      contextIsolation: true
+      contextIsolation: true,
+      webSecurity: false // Required for cross-origin preview of local containerized apps
     }
   })
 
@@ -217,12 +218,16 @@ ipcMain.handle('delete-project', async (_, id, localPath) => {
   })
 })
 
-ipcMain.handle('get-ai-review', async (_, code, fileName) => {
-  return await aiService.getSecurityReview(code, fileName)
+ipcMain.handle('get-ai-review', async (event, code, fileName) => {
+  return await aiService.getSecurityReview(code, fileName, (chunk) => {
+    event.sender.send('ai-review-chunk', chunk)
+  })
 })
 
-ipcMain.handle('chat-with-architect', async (_, messages) => {
-  return await aiService.chatWithArchitect(messages)
+ipcMain.handle('chat-with-architect', async (event, messages) => {
+  return await aiService.chatWithArchitect(messages, (chunk) => {
+    event.sender.send('ai-chat-chunk', chunk)
+  })
 })
 
 // --- Execution & Docker Handlers ---

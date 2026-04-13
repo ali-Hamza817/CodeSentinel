@@ -11,6 +11,8 @@ export interface ScanMetrics {
   totalFiles: number;
   vulnerabilities: number;
   avgComplexity: number;
+  totalBranches?: number;
+  highRiskFunctions?: { name: string; score: number; file: string; line: number }[];
   buildStatus: 'Passed' | 'Failed' | 'Pending';
 }
 
@@ -55,15 +57,16 @@ export class RepoService {
     const totalFiles = files.length;
     const findings: StaticFinding[] = [];
     let totalComplexity = 0;
+    const allHighRiskFunctions: any[] = [];
+    let grandTotalBranches = 0;
 
     for (let i = 0; i < totalFiles; i++) {
       const filePath = files[i];
       const relativePath = path.relative(projectPath, filePath);
 
-      // Report real-time progress (0–99 during scan, 100 on complete)
       if (onProgress) {
         onProgress({
-          progress: Math.round(((i) / totalFiles) * 99),
+          progress: Math.round(((i) / totalFiles) * 95),
           file: relativePath
         });
       }
@@ -71,59 +74,86 @@ export class RepoService {
       try {
         const content = await fs.readFile(filePath, 'utf8');
 
-        // ── 1. Pattern-based Static Scan ──────────────────────────────
-        const patternFindings = this.runPatternScan(content, relativePath);
-        findings.push(...patternFindings);
+        // 1. Logic Intelligence (Cyclomatic Analysis)
+        const compReport = CodeAnalyzer.analyzeComplexity(content, relativePath);
+        totalComplexity += compReport.avgComplexity;
+        grandTotalBranches += compReport.totalBranches;
+        allHighRiskFunctions.push(...compReport.highRiskFunctions.map(f => ({...f, file: relativePath })));
 
-        // ── 2. Entropy-based Secret Detection ─────────────────────────
+        // 2. Initial Scans (Patterns + Secrets)
+        const patternFindings = this.runPatternScan(content, relativePath);
         const secrets = CodeAnalyzer.detectSecrets(content);
-        secrets.forEach(s => {
-          findings.push({
+        
+        const pendingEnrichment = [
+          ...patternFindings,
+          ...secrets.map(s => ({
             file: relativePath,
             line: s.line,
-            severity: 'critical',
-            type: 'Hardcoded Secret',
+            severity: 'critical' as const,
+            type: 'Secret',
             title: `Hardcoded Secret: ${s.type}`,
-            description: `High-entropy token detected in ${relativePath}. This credential may be exposed if the repository is public.`,
+            description: `Exposed credential detected.`,
             snippet: s.snippet,
-            suggestedFix: 'Move secrets to environment variables or a secrets manager (e.g. dotenv, Vault).'
-          });
-        });
+            suggestedFix: 'Replace with env var.'
+          }))
+        ];
 
-        // ── 3. Cyclomatic Complexity ───────────────────────────────────
-        const comp = CodeAnalyzer.calculateComplexity(content);
-        totalComplexity += comp;
+        // 3. Guaranteed Unique Enrichment via Architect
+        if (pendingEnrichment.length > 0) {
+          const enrichmentPrompt = `As CodeSentinel AI Architect, enrich these ${pendingEnrichment.length} findings in ${relativePath}.
+          FULL SOURCE CONTEXT:
+          \`\`\`
+          ${content.slice(0, 8000)}
+          \`\`\`
+          FINDINGS TO UNIQUE-IFY:
+          ${JSON.stringify(pendingEnrichment.map(f => ({ line: f.line, title: f.title, snippet: f.snippet })))}
 
-        // ── 4. LLM Deep Reasoning via Llama 3.2 (Docker) ──────────────
-        if (content.length < 20000) {
-          const aiFindings = await aiService.getSecurityReview(content, relativePath);
-          aiFindings.forEach(af => {
-            findings.push({
-              file: relativePath,
-              line: af.line || 0,
-              severity: af.severity.toLowerCase() as StaticFinding['severity'],
-              type: `AI: ${af.issue}`,
-              title: af.issue,
-              description: af.recommendation,
-              snippet: af.snippet || '',
-              suggestedFix: af.recommendation
+          REQUIREMENT: Provide a HIGHLY SPECIFIC, unique description and fix for EVERY finding. ZERO REPETITION.
+          RESPONSE FORMAT: JSON Array ONLY: [{"line": number, "description": "Expert unique explanation", "fix": "Specific code fix"}]`;
+
+          const aiData = await aiService.chatWithArchitect([{ role: 'user', content: enrichmentPrompt }]);
+          try {
+            const match = aiData.match(/\[[\s\S]*\]/);
+            const enriched = JSON.parse(match ? match[0] : '[]');
+            enriched.forEach((item: any) => {
+              const target = pendingEnrichment.find(f => f.line === item.line);
+              if (target) {
+                target.description = item.description;
+                target.suggestedFix = item.fix;
+              }
             });
-          });
+          } catch (e) { console.error("Enrichment parse failed", e); }
+        }
+        findings.push(...pendingEnrichment);
+
+        // 4. LLM Deep Reasoning
+        if (content.length < 15000) {
+          const aiResponse = await aiService.getSecurityReview(content, relativePath);
+          const aiFindings = (aiResponse.findings || []).map(af => ({
+            file: relativePath,
+            line: af.line || 0,
+            severity: af.severity.toLowerCase() as any,
+            type: `AI: ${af.issue}`,
+            title: af.issue,
+            description: af.recommendation,
+            snippet: af.snippet || '',
+            suggestedFix: af.recommendation
+          }));
+          findings.push(...aiFindings);
         }
       } catch (err) {
-        console.error(`[RepoService] Audit failed for ${relativePath}:`, err);
+        console.error(`Audit failed for ${relativePath}:`, err);
       }
     }
 
-    // Signal 100% completion
-    if (onProgress) {
-      onProgress({ progress: 100, file: 'Analysis complete' });
-    }
+    if (onProgress) onProgress({ progress: 100, file: 'Synching Data...' });
 
     const metrics: ScanMetrics = {
       totalFiles,
       vulnerabilities: findings.filter(f => f.severity === 'critical' || f.severity === 'high').length,
       avgComplexity: totalFiles > 0 ? totalComplexity / totalFiles : 0,
+      totalBranches: grandTotalBranches,
+      highRiskFunctions: allHighRiskFunctions.sort((a, b) => b.score - a.score).slice(0, 15),
       buildStatus: 'Passed'
     };
 

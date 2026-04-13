@@ -11,7 +11,8 @@ import {
   Code2,
   ShieldCheck,
   BrainCircuit,
-  Zap
+  Zap,
+  Lightbulb
 } from "lucide-react";
 import { Badge } from "../components/ui/badge";
 import { useProjectStore, ScanFinding } from "../store/projectStore";
@@ -305,30 +306,35 @@ export function StaticAnalysis() {
                       <SeverityIcon severity={finding.severity} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
                           finding.severity === 'critical' ? 'bg-red-100 text-red-700' :
                           finding.severity === 'high' ? 'bg-orange-100 text-orange-700' :
                           finding.severity === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
                         }`}>{finding.severity}</span>
                         {finding.type?.startsWith('AI:') && (
-                          <span className="text-[9px] font-bold text-purple-600 flex items-center gap-0.5">
-                            <BrainCircuit className="w-2.5 h-2.5" /> AI
+                          <span className="text-[10px] font-bold text-purple-600 flex items-center gap-0.5">
+                            <BrainCircuit className="w-3 h-3" /> AI Expert
                           </span>
                         )}
-                        <span className="text-[10px] font-mono text-slate-400">Line {finding.line}</span>
+                        <span className="text-[11px] font-mono text-slate-400">Line {finding.line}</span>
                       </div>
-                      <p className="text-xs font-bold text-slate-900 mb-0.5">{finding.title}</p>
-                      <p className="text-[10px] text-slate-500 leading-relaxed">{finding.description}</p>
+                      <p className="text-sm font-bold text-slate-900 mb-1">{finding.title}</p>
+                      <p className="text-[12px] text-slate-600 leading-relaxed font-medium">{finding.description}</p>
                       {finding.affectedCode && (
-                        <code className="block mt-1.5 text-[9px] font-mono bg-slate-900 text-green-400 px-2 py-1 rounded truncate">
-                          {finding.affectedCode}
-                        </code>
+                        <div className="mt-2 bg-slate-950 p-2 rounded-lg border border-slate-800">
+                          <code className="block text-[10px] font-mono text-green-400 whitespace-pre overflow-x-auto">
+                            {finding.affectedCode}
+                          </code>
+                        </div>
                       )}
                       {finding.suggestedFix && (
-                        <p className="mt-1 text-[9px] text-blue-600 font-medium">
-                          Fix: {finding.suggestedFix.slice(0, 120)}
-                        </p>
+                        <div className="mt-2 p-2 bg-blue-50/50 rounded-lg border border-blue-100 flex items-start gap-2">
+                           <Lightbulb className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                           <p className="text-[11px] text-blue-800 font-bold leading-relaxed">
+                             Fix: {finding.suggestedFix}
+                           </p>
+                        </div>
                       )}
                     </div>
                   </div>

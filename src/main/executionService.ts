@@ -75,7 +75,9 @@ CMD ["npm", "start"]
     return new Promise((resolve, reject) => {
       // Clean up existing container if any
       spawn('docker', ['rm', '-f', containerName], { shell: true }).on('close', () => {
-        const child = spawn('docker', ['run', '--name', containerName, '-d', tag], { shell: true });
+        // Map common development ports to host
+        const portMappings = ['-p', '3000:3000', '-p', '5000:5000', '-p', '5001:5001', '-p', '8000:8000', '-p', '8080:8080'];
+        const child = spawn('docker', ['run', '--name', containerName, ...portMappings, '-d', tag], { shell: true });
         
         child.on('close', (code) => {
           if (code === 0) {

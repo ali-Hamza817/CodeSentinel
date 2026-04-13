@@ -20,6 +20,8 @@ export interface ProjectMetrics {
   buildStatus: 'Passed' | 'Failed' | 'Running' | 'Pending';
   buildTimeMs?: number;
   startupTimeMs?: number;
+  totalBranches?: number;
+  highRiskFunctions?: { name: string; score: number; file: string; line: number }[];
   dockerStats?: {
     cpu: string;
     mem: string;

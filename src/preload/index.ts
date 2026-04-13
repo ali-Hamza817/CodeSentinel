@@ -26,6 +26,8 @@ const api = {
   ensureAIDocker: () => ipcRenderer.invoke('ensure-ai-container'),
   onBuildLog: (callback: (data: string) => void) => ipcRenderer.on('build-log', (_, data) => callback(data)),
   onDockerLog: (callback: (data: string) => void) => ipcRenderer.on('docker-log', (_, data) => callback(data)),
+  onAIChatChunk: (callback: (chunk: string) => void) => ipcRenderer.on('ai-chat-chunk', (_, chunk) => callback(chunk)),
+  onAIReviewChunk: (callback: (chunk: string) => void) => ipcRenderer.on('ai-review-chunk', (_, chunk) => callback(chunk)),
   onAIPullLog: (callback: (data: string) => void) => ipcRenderer.on('ai-pull-log', (_, data) => callback(data)),
   onAnalysisProgress: (callback: (p: { progress: number, file: string }) => void) => ipcRenderer.on('analysis-progress', (_, p) => callback(p)),
 

@@ -72,7 +72,7 @@ export class AIService {
     return { findings, measures: measures.slice(0, 5) }; // Caps measures at 5
   }
 
-  async getSecurityReview(code: string, fileName: string): Promise<AIRendererResponse> {
+  async getSecurityReview(code: string, fileName: string, onChunk?: (chunk: string) => void): Promise<AIRendererResponse> {
     const ready = await this.isModelReady();
     if (!ready) return { findings: [], measures: [] };
 
@@ -81,7 +81,14 @@ export class AIService {
 
     const prompt = `Perform a HIGH-INTENSITY security audit on this ${lang} code. File: "${fileName}"
 
-You must return a JSON object with this EXACT structure:
+You must return your response in TWO SECTIONS. 
+Section 1: Detailed Architectural Reasoning (Narrative explaining your thoughts).
+Section 2: The structured JSON findings.
+
+Structure:
+[[REASONING]]
+(Detailed expert narrative here)
+[[JSON]]
 {
   "findings": [
     {"file": "${fileName}", "line": 0, "snippet": "code", "issue": "vulnerability", "severity": "Critical|High|Medium|Low", "recommendation": "fix"}
@@ -92,8 +99,6 @@ You must return a JSON object with this EXACT structure:
 }
 
 Focus on: hardcoded secrets, unsafe API usage, input validation, logic flaws, and .NET security best practices.
-Output ONLY the JSON object.
-
 Code:
 ${code.slice(0, 6000)}`;
 
@@ -103,55 +108,72 @@ ${code.slice(0, 6000)}`;
         model: this.model,
         prompt,
         stream: true,
-        options: { temperature: 0.1, num_predict: 2000 }
+        options: { temperature: 0.1, num_predict: 2500 }
       });
 
       for await (const chunk of stream) {
         fullResponse += chunk.response;
-        // Early break if we have a closed JSON object at the end
-        if (fullResponse.trim().endsWith('}')) break;
+        if (onChunk) onChunk(chunk.response);
       }
 
-      return this.extractStructuredResponse(fullResponse);
+      // Extract JSON part for structural storage, everything else is reasoning
+      const jsonParts = fullResponse.split('[[JSON]]');
+      const narrative = jsonParts[0].replace('[[REASONING]]', '').trim();
+      const jsonContent = jsonParts[1] || '';
+
+      const structured = this.extractStructuredResponse(jsonContent);
+      return {
+        findings: structured.findings,
+        measures: structured.measures,
+        // @ts-ignore
+        reasoning: narrative 
+      };
     } catch (error) {
       console.error(`[AIService] Inference failed:`, error);
       return { findings: [], measures: [] };
     }
   }
 
-  async chatWithArchitect(messages: { role: string; content: string }[]): Promise<string> {
+  async chatWithArchitect(messages: { role: string; content: string }[], onChunk?: (chunk: string) => void): Promise<string> {
     const ready = await this.isModelReady();
     if (!ready) return "AI Service is not ready. Please ensure Ollama is running Llama 3.2.";
 
     const systemPrompt = {
       role: 'system',
-      content: `You are the CodeSentinel AI Security Architect—a senior security expert specialized in architectural reasoning and vulnerability discovery.
-      
-      Your goal is to provide deep, conversational audits. When you are provided with source code and findings:
-      1. Always prioritize data sovereignty (remind the user that all analysis is local).
-      2. If findings are present, explain the underlying logic flaw and why it exists.
-      3. Provide high-quality code snippets for remediation.
-      4. Be direct, technical, and professional. 
-      5. If no vulnerabilities are obvious, analyze complexity and maintainability.
-      6. Use markdown for better formatting.
-      
-      You are running in a private, containerized environment (Ollama + Llama 3.2).`
+      content: `You are the CodeSentinel AI Security Architect.
+      When providing fixes, be specific to the lines of code provided. Use markdown formatting.`
     };
 
     try {
-      // Ensure system prompt is always at the start
       const finalMessages = [systemPrompt, ...messages];
+      let fullText = '';
 
-      const response = await this.client.chat({
-        model: this.model,
-        messages: finalMessages,
-        stream: false,
-        options: { temperature: 0.7 }
-      });
-      return response.message.content;
+      if (onChunk) {
+        const stream = await this.client.chat({
+          model: this.model,
+          messages: finalMessages,
+          stream: true,
+          options: { temperature: 0.7 }
+        });
+
+        for await (const chunk of stream) {
+          const content = chunk.message.content;
+          fullText += content;
+          onChunk(content);
+        }
+        return fullText;
+      } else {
+        const response = await this.client.chat({
+          model: this.model,
+          messages: finalMessages,
+          stream: false,
+          options: { temperature: 0.7 }
+        });
+        return response.message.content;
+      }
     } catch (error) {
       console.error(`[AIService] Chat failed:`, error);
-      return "I encountered an error while processing your request. Please try again.";
+      return "I encountered an error while processing your request.";
     }
   }
 }
